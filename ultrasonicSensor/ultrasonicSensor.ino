@@ -8,6 +8,7 @@
   Vanessa da Fontoura
   Vitor Dal Bó Abella */
 
+
 // Constantes
 const int NUMBER_OF_LEDS = 5;
 const int LEDS_PINS[NUMBER_OF_LEDS] = { 5, 6, 9, 10, 11 };
@@ -69,7 +70,7 @@ void binaryDistance(unsigned int distance) {
 
 void ledPulse() {
   for (int i = 0; i < NUMBER_OF_LEDS; i++) {
-    for (int fadeValue = 0; fadeValue <= 225; fadeValue += 5) {
+    for (int fadeValue = 0; fadeValue <= 225; fadeValue += 10) {
       analogWrite(LEDS_PINS[i], fadeValue);
       delay(10);
     }
@@ -78,7 +79,7 @@ void ledPulse() {
   delay(50);
 
   for (int i = NUMBER_OF_LEDS - 1; i >= 0; i--) {
-    for (int fadeValue = 255; fadeValue >= 0; fadeValue -= 5) {
+    for (int fadeValue = 255; fadeValue >= 0; fadeValue -= 10) {
       analogWrite(LEDS_PINS[i], fadeValue);
       delay(10);
     }
@@ -102,6 +103,7 @@ void setup() {
 void loop() {
 
   distance = measureDistance(TRIGGER_PIN, ECHO_PIN);
+  Serial.println(distance);
 
   if (distance >= MIN_DISTANCE_CM && distance <= MAX_DISTANCE_CM) {
     binaryDistance(distance);
