@@ -1,160 +1,181 @@
-// pinos motor esquerda
-const int ATIVAR_MOTOR_ESQUERDO_PIN = 4;        // L293 p1
-const int MOTOR_ESQUERDO_MOVER_FRENTE_PIN = 5;  // L293 p2
-const int MOTOR_ESQUERDO_MOVER_TRAS_PIN = 6;    // L293 p7
-// pinos motor direita
-const int ATIVAR_MOTOR_DIREITO_PIN = 12;        // L293 p9
-const int MOTOR_DIREITO_MOVER_FRENTE_PIN = 10;  // L293 p15
-const int MOTOR_DIREITO_MOVER_TRAS_PIN = 11;    // L293 p10
+struct Engine {
+  const int ENABLE_PIN;
+  const int MOVE_FORWARD_PIN;
+  const int MOVE_BACKWARD_PIN;
+  const int LED_FORWARD_PIN;
+  const int LED_BACKWARD_PIN;
+};
 
-//pinos leds
-const int pinLedEsquerdaMoverFrente = 2;
-const int pinLedEsquerdaMoverTras = 3;
-const int pinLedDireitaMoverFrente = 9;
-const int pinLedDireitaMoverTras = 8;
-
-// vetor
-const int esquerda = 0;
-const int direita = 1;
-const int ATIVAR_MOTOR_PINS[2] = { ATIVAR_MOTOR_ESQUERDO_PIN, ATIVAR_MOTOR_DIREITO_PIN };
-const int pinVetorMotorMoveFrente[2] = { MOTOR_ESQUERDO_MOVER_FRENTE_PIN, MOTOR_DIREITO_MOVER_FRENTE_PIN };
-const int pinVetorMotorMoveTras[2] = { MOTOR_ESQUERDO_MOVER_TRAS_PIN, MOTOR_DIREITO_MOVER_TRAS_PIN };
-const int pinLedMoveFrente[2] = { pinLedEsquerdaMoverFrente, pinLedDireitaMoverFrente };
-const int pinLedMoveTras[2] = { pinLedEsquerdaMoverTras, pinLedDireitaMoverTras };
+struct Engine leftEngine = { 4, 5, 6, 2, 3 };
+struct Engine rightEngine = { 12, 10, 11, 9, 8 };
 
 void setup() {
-  // config pinos motores
-  for (int i = 0; i < 2; i++) {
-    pinMode(ATIVAR_MOTOR_PINS[i], OUTPUT);
-    pinMode(pinVetorMotorMoveFrente[i], OUTPUT);
-    pinMode(pinVetorMotorMoveTras[i], OUTPUT);
-    digitalWrite(ATIVAR_MOTOR_PINS[i], HIGH);
-  }
+  pinMode(leftEngine.ENABLE_PIN, OUTPUT);
+  pinMode(leftEngine.MOVE_FORWARD_PIN, OUTPUT);
+  pinMode(leftEngine.MOVE_BACKWARD_PIN, OUTPUT);
+  pinMode(leftEngine.LED_FORWARD_PIN, OUTPUT);
+  pinMode(leftEngine.LED_BACKWARD_PIN, OUTPUT);
+
+  pinMode(rightEngine.ENABLE_PIN, OUTPUT);
+  pinMode(rightEngine.MOVE_FORWARD_PIN, OUTPUT);
+  pinMode(rightEngine.MOVE_BACKWARD_PIN, OUTPUT);
+  pinMode(rightEngine.LED_FORWARD_PIN, OUTPUT);
+  pinMode(rightEngine.LED_BACKWARD_PIN, OUTPUT);
+
+  digitalWrite(leftEngine.ENABLE_PIN, HIGH);
+  digitalWrite(rightEngine.ENABLE_PIN, HIGH);
+
   Serial.begin(9600);
 }
 
+
 void loop() {
-  moveFrente(255);
-  delay(2000);
-  frear();
-  delay(2000);  // delay para dar tempo de frear
+  moveForward(255);
+  brake();
 
-  moveTras(255);
-  delay(2000);
-  parar();
-  delay(2000);
+  moveBackward(255);
+  stop();
 
-  giroHorarioEixo(255);
-  delay(2000);
-  parar();
-  delay(2000);
+  clockwiseRotationAroundAxis(255);
+  stop();
 
-  giroAntiHorarioEixo(255);
-  delay(2000);
-  parar();
-  delay(2000);
+  counterclockwiseRotationAroundAxis(255);
+  stop();
 
-  giroHorarioRoda(255);
-  delay(2000);
-  parar();
-  delay(2000);
+  clockwiseRotationAroundWheel(255);
+  stop();
 
-  giroAntiHorarioRoda(255);
-  delay(2000);
-  parar();
-  delay(2000);
+  counterclockwiseRotationAroundWheel(255);
+  stop();
 }
-// Move roda i para frente, 0->esquerda, 1->direita
-void moveRodaFrente(int roda, int velocidade) {
-  digitalWrite(pinLedMoveFrente[roda], HIGH);
-  digitalWrite(pinLedMoveTras[roda], LOW);
-  analogWrite(pinVetorMotorMoveTras[roda], 0);
-  analogWrite(pinVetorMotorMoveFrente[roda], velocidade);
+
+
+void moveWheelForward(struct Engine engine, int speed) {
+  digitalWrite(engine.LED_FORWARD_PIN, HIGH);
+  digitalWrite(engine.LED_BACKWARD_PIN, LOW);
+
+  analogWrite(engine.MOVE_BACKWARD_PIN, 0);
+  analogWrite(engine.MOVE_FORWARD_PIN, speed);
 }
-// Move roda i para tras, 0->esquerda, 1->direita
-void moveRodaTras(int roda, int velocidade) {
-  digitalWrite(pinLedMoveFrente[roda], LOW);
-  digitalWrite(pinLedMoveTras[roda], HIGH);
-  analogWrite(pinVetorMotorMoveTras[roda], velocidade);
-  analogWrite(pinVetorMotorMoveFrente[roda], 0);
+
+
+void moveWheelBackward(struct Engine engine, int speed) {
+  digitalWrite(engine.LED_FORWARD_PIN, LOW);
+  digitalWrite(engine.LED_BACKWARD_PIN, HIGH);
+
+  analogWrite(engine.MOVE_BACKWARD_PIN, speed);
+  analogWrite(engine.MOVE_FORWARD_PIN, 0);
 }
-// frea roda i, 0->esquerda, 1->direita
-void freaRoda(int roda) {
-  digitalWrite(pinLedMoveFrente[roda], HIGH);
-  digitalWrite(pinLedMoveTras[roda], HIGH);
-  digitalWrite(pinVetorMotorMoveFrente[roda], HIGH);
-  digitalWrite(pinVetorMotorMoveTras[roda], HIGH);
+
+
+void brakeWheel(struct Engine engine) {
+  digitalWrite(engine.LED_FORWARD_PIN, HIGH);
+  digitalWrite(engine.LED_BACKWARD_PIN, HIGH);
+  digitalWrite(engine.MOVE_FORWARD_PIN, HIGH);
+  digitalWrite(engine.MOVE_BACKWARD_PIN, HIGH);
 }
-// para roda i, 0->esquerda, 1->direita
-void paraRoda(int roda) {
-  digitalWrite(pinLedMoveFrente[roda], LOW);
-  digitalWrite(pinLedMoveTras[roda], LOW);
-  digitalWrite(pinVetorMotorMoveFrente[roda], LOW);
-  digitalWrite(pinVetorMotorMoveTras[roda], LOW);
+
+
+void stopWheel(struct Engine engine) {
+  digitalWrite(engine.LED_FORWARD_PIN, LOW);
+  digitalWrite(engine.LED_BACKWARD_PIN, LOW);
+  digitalWrite(engine.MOVE_FORWARD_PIN, LOW);
+  digitalWrite(engine.MOVE_BACKWARD_PIN, LOW);
 }
+
+
 /*
-  moveFrente - movimenta o robo para frente
-    velocidade - velocidade de rotacao (0 a 255)
+  moveForward - movimenta o robo para frente
+    speed - velocidade de rotacao (0 a 255)
 */
-void moveFrente(int velocidade) {
+void moveForward(int speed) {
   Serial.print("Mover para frente\n");
-  moveRodaFrente(esquerda, 255);
-  moveRodaFrente(direita, 255);
+  moveWheelForward(leftEngine, speed);
+  moveWheelForward(rightEngine, speed);
+
+  delay(2000);
 }
+
+
 /*
-  moveTras - movimenta o robo para tras
-    velocidade - velocidade de rotacao (0 a 255)
+  moveBackward - movimenta o robo para tras
+    speed - velocidade de rotacao (0 a 255)
 */
-void moveTras(int velocidade) {
+void moveBackward(int speed) {
   Serial.print("Mover para tras\n");
-  moveRodaTras(esquerda, 255);
-  moveRodaTras(direita, 255);
+  moveWheelBackward(leftEngine, speed);
+  moveWheelBackward(rightEngine, speed);
+
+  delay(2000);
 }
+
+
 /*
-  frear -  trava as rodas do robo
+  brake -  trava as rodas do robo
 */
-void frear() {
+void brake() {
   Serial.print("Frear\n");
-  freaRoda(esquerda);
-  freaRoda(direita);
+  brakeWheel(leftEngine);
+  brakeWheel(rightEngine);
+
+  delay(2000);  // delay para dar tempo de frear
 }
+
+
 /*
-  parar - robo parado (neutro)
+  stop - robo parado (neutro)
 */
-void parar() {
+void stop() {
   Serial.print("Parar\n");
-  paraRoda(esquerda);
-  paraRoda(direita);
+  stopWheel(leftEngine);
+  stopWheel(rightEngine);
+
+  delay(2000);
 }
+
+
 /*
   Giro horario sobre eixo do robo
 */
-void giroHorarioEixo(int velocidade) {
+void clockwiseRotationAroundAxis(int speed) {
   Serial.print("Giro horario sobre eixo do robo\n");
-  moveRodaFrente(esquerda, 255);
-  moveRodaTras(direita, 255);
+  moveWheelForward(leftEngine, speed);
+  moveWheelBackward(rightEngine, speed);
+
+  delay(2000);
 }
+
 /*
   Giro ANTI horario sobre eixo do robo
 */
-void giroAntiHorarioEixo(int velocidade) {
+void counterclockwiseRotationAroundAxis(int speed) {
   Serial.print("Giro ANTI horario sobre eixo do robo\n");
-  moveRodaFrente(direita, 255);
-  moveRodaTras(esquerda, 255);
+  moveWheelForward(rightEngine, speed);
+  moveWheelBackward(leftEngine, speed);
+
+  delay(2000);
 }
+
+
 /*
   Giro horario sobre roda direita
 */
-void giroHorarioRoda(int velocidade) {
+void clockwiseRotationAroundWheel(int speed) {
   Serial.print("Giro horario sobre roda direita\n");
-  moveRodaFrente(esquerda, 255);
-  paraRoda(direita);
+  moveWheelForward(leftEngine, speed);
+  stopWheel(rightEngine);
+
+  delay(2000);
 }
+
+
 /*
   Giro ANTI horario sobre roda esquerda
 */
-void giroAntiHorarioRoda(int velocidade) {
+void counterclockwiseRotationAroundWheel(int speed) {
   Serial.print("Giro ANTI horario sobre roda esquerda\n");
-  moveRodaFrente(direita, 255);
-  paraRoda(esquerda);
+  moveWheelForward(rightEngine, speed);
+  stopWheel(leftEngine);
+
+  delay(2000);
 }
