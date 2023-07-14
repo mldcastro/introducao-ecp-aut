@@ -34,18 +34,18 @@ void loop() {
   brake();
 
   moveBackward(255);
-  stop();
+  brake();
 
   clockwiseRotationAroundAxis(255);
-  stop();
+  brake();
 
   counterclockwiseRotationAroundAxis(255);
-  stop();
+  brake();
 
   clockwiseRotationAroundWheel(255);
-  stop();
 
   counterclockwiseRotationAroundWheel(255);
+
   stop();
 }
 
@@ -158,7 +158,7 @@ void counterclockwiseRotationAroundAxis(int speed) {
 
 
 /*
-  Giro horario sobre roda direita
+  Giro horario sobre roda
 */
 void clockwiseRotationAroundWheel(int speed) {
   Serial.print("Giro horario sobre roda direita\n");
@@ -166,16 +166,32 @@ void clockwiseRotationAroundWheel(int speed) {
   stopWheel(rightEngine);
 
   delay(2000);
+  brake();
+
+  Serial.print("Giro horario sobre roda esquerda\n");
+  moveWheelBackward(rightEngine, speed);
+  stopWheel(leftEngine);
+
+  delay(2000);
+  brake();
 }
 
 
 /*
-  Giro ANTI horario sobre roda esquerda
+  Giro ANTI horario sobre roda
 */
 void counterclockwiseRotationAroundWheel(int speed) {
+  Serial.print("Giro ANTI horario sobre roda direita\n");
+  moveWheelBackward(leftEngine, speed);
+  stopWheel(rightEngine);
+
+  delay(2000);
+  brake();
+
   Serial.print("Giro ANTI horario sobre roda esquerda\n");
   moveWheelForward(rightEngine, speed);
   stopWheel(leftEngine);
 
   delay(2000);
+  brake();
 }
