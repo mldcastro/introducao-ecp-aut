@@ -1,7 +1,6 @@
-/* Tarefa 3 - Introdução a engenharia de controle e automação
+/* Tarefa 6 - Introdução a engenharia de controle e automação
   Prof. Renato Ventura Bayan Henriques
-  Contador binario com botão e com modo de standby com leds acendendo
-  em ordem crescente e apagando em modo decrescente
+  Semáforo de 4 tempos
   Grupo:
   Kelvin Schaun Brose
   Maria Clara da Silva Brandi Escobar
@@ -10,13 +9,20 @@
   Vitor Dal Bó Abella
 */
 
+#include <string.h>  // para a função tolower
+
+// inicializador de funçoes
+void carSemaphoresLoop(volatile byte *position);
+void closeAllCarSemaphores();
+int userInputToCarSemaphorePosition();
+
 class CarSemaphore {
-  const int GREEN_LIGHT_PIN;
-  const int RED_LIGHT_PIN;
-  const int YELLOW_LIGHT_PIN;
+  const byte GREEN_LIGHT_PIN;
+  const byte RED_LIGHT_PIN;
+  const byte YELLOW_LIGHT_PIN;
 
 public:
-  CarSemaphore(int greenLightPin, int redLightPin, int yellowLightPin)
+  CarSemaphore(byte greenLightPin, byte redLightPin, byte yellowLightPin)
     : GREEN_LIGHT_PIN(greenLightPin), RED_LIGHT_PIN(redLightPin), YELLOW_LIGHT_PIN(yellowLightPin) {}
 
   void setupPins(void) {
@@ -46,57 +52,75 @@ public:
 
 
 class PedestrianSemaphore {
-  const int GREEN_LIGHT_PIN;
-  const int RED_LIGHT_PIN;
+  const byte GREEN_LIGHT_PIN;
+  const byte RED_LIGHT_PIN;
+  const byte PUSH_BUTTON_PIN;
 
 public:
-  PedestrianSemaphore(int greenLightPin, int redLightPin)
-    : GREEN_LIGHT_PIN(greenLightPin), RED_LIGHT_PIN(redLightPin) {}
+  PedestrianSemaphore(byte greenLightPin, byte redLightPin, byte pushButtonPin)
+    : GREEN_LIGHT_PIN(greenLightPin),
+      RED_LIGHT_PIN(redLightPin),
+      PUSH_BUTTON_PIN(pushButtonPin) {}
+
+  bool wasPushButtonPressed = false;
 
   void setupPins(void) {
     pinMode(GREEN_LIGHT_PIN, OUTPUT);
     pinMode(RED_LIGHT_PIN, OUTPUT);
+
+    pinMode(PUSH_BUTTON_PIN, INPUT);
+    attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_PIN), closeAllCarSemaphores, RISING);
   }
 
   void open(void) {
-    analogWrite(GREEN_LIGHT_PIN, HIGH);
     analogWrite(RED_LIGHT_PIN, LOW);
+    analogWrite(GREEN_LIGHT_PIN, 255);
+  }
+
+  void openPulsing(void) {
+    if (wasPushButtonPressed) {
+      for (int i = 0; i < 3; i++) {
+        for (int i = 0; i <= 255; i += 15) {
+          analogWrite(GREEN_LIGHT_PIN, i);
+          delay(100);
+        }
+
+        for (int i = 255; i >= 0; i -= 15) {
+          analogWrite(GREEN_LIGHT_PIN, i);
+          delay(100);
+        }
+      }
+    }
+
+    wasPushButtonPressed = false;
   }
 
   void close(void) {
     analogWrite(GREEN_LIGHT_PIN, LOW);
-    analogWrite(RED_LIGHT_PIN, HIGH);
+    analogWrite(RED_LIGHT_PIN, 255);
+  }
+
+  void updatePushButtonState(void) {
+    // Se um semáforo teve o botão apertado, então a variável de estado wasPushButtonPressed
+    // é setada para true, assim sabemos qual semáforo devemos manter piscando quando o pedestre
+    // aperta o botão
+    if (digitalRead(PUSH_BUTTON_PIN)) {
+      wasPushButtonPressed = true;
+    }
   }
 };
 
-const int NUMBER_OF_SEMAPHORES = 4;
 
-//variaveis de estado
-int pin = 0;
+const byte NUMBER_OF_SEMAPHORES = 4;
 
-//int buttonState = LOW;
-bool isInStandby = true;
-
-//inicializador de funçoes
-void standByMode();
-void binaryCounter();
-void blink();
-
-//variaveis volateis da funcao binaryCounter
-int count = 0;
-int ledState = LOW;
-int i = 0;
-int resto;
-int divisor;
-int position = 0;
-
-volatile byte state = LOW;
+volatile byte position = 0;  // Esta variável vai controlar qual semáforo de carro abrir
+volatile bool isPedestrianPushingButton = false;  // Esta variável controla o attachInterrupt
 
 
-PedestrianSemaphore pedestrianSouthEast = PedestrianSemaphore(A10, A11);
-PedestrianSemaphore pedestrianSouthWest = PedestrianSemaphore(A8, A9);
-PedestrianSemaphore pedestrianNorthWest = PedestrianSemaphore(A14, A15);
-PedestrianSemaphore pedestrianNorthEast = PedestrianSemaphore(A12, A13);
+PedestrianSemaphore pedestrianSouthEast = PedestrianSemaphore(A10, A11, 3);
+PedestrianSemaphore pedestrianSouthWest = PedestrianSemaphore(A8, A9, 2);
+PedestrianSemaphore pedestrianNorthWest = PedestrianSemaphore(A14, A15, 20);
+PedestrianSemaphore pedestrianNorthEast = PedestrianSemaphore(A12, A13, 21);
 
 PedestrianSemaphore pedestrianSemaphores[NUMBER_OF_SEMAPHORES] = {
   pedestrianSouthEast,
@@ -118,104 +142,115 @@ CarSemaphore carSemaphores[NUMBER_OF_SEMAPHORES] = {
 };
 
 
-//inicializar variaveis e pinos
+// inicializar variaveis e pinos
 void setup() {
   Serial.begin(9600);
 
   for (int i = 0; i < NUMBER_OF_SEMAPHORES; i++) {
     pedestrianSemaphores[i].setupPins();
     pedestrianSemaphores[i].close();
+
     carSemaphores[i].setupPins();
     carSemaphores[i].close();
   }
-
-  // pinMode(PUSH_BUTTON_PIN, INPUT);
-  // attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_PIN), sinalN, RISING);  //x4
-  // attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_PIN), sinalS, RISING);
-  // attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_PIN), sinalO, RISING);
-  // attachInterrupt(digitalPinToInterrupt(PUSH_BUTTON_PIN), sinalL, RISING);
 }
 
-//loop principal
+// loop principal
 void loop() {
-  tecla = Serial.read();
-  red();
-  if (!state) {
-    if (tecla == 'n')
-      carroN();
-    else if (tecla == 's')
-      carroS();
-    else if (tecla == 'o')
-      carroO();
-    else if (tecla == 'l')
-      carroL();
-    else
-      standByMode(position);
+  if (!isPedestrianPushingButton) {
+    carSemaphoresLoop(&position);
   } else {
-    pedestre();
+    openAllPedestrianSemaphores();
   }
 }
 
 
+void carSemaphoresLoop(volatile byte *position) {
+  int carComingAt;
 
-void standByMode(int position) {
-  while (position < NUMBER_OF_SEMAPHORES) {
-    carSemaphores[position].open();
+  for (*position; *position < NUMBER_OF_SEMAPHORES && !isPedestrianPushingButton; (*position)++) {
+    /* Este loop itera sobre cada semáforo de carro e checa para ver se o usuário entrou com algum
+    input. Se o usuário entrou com algum input, a variável *position é atualizada com o valor do semáforo
+    escolhido pelo usuário.
+    Se um pedestre aperta o botão para atravessar a rua, o loop termina a iteração atual e vai para a rotina
+    do semáforo dos pedestres. */
+    carComingAt = userInputToCarSemaphorePosition();
+
+    if (carComingAt != -1) {  // se o input é válido
+      *position = carComingAt;
+    }
+
+    carSemaphores[*position].open();
     delay(1500);
-    carSemaphores[position].attention();
+    carSemaphores[*position].attention();
     delay(1000);
-    carSemaphores[position].close();
-
-    position++;
+    carSemaphores[*position].close();
   }
-  position = 0;
-}
 
-void sinalN() {
-  state = !state;
-  // local = 'n';
-  //for (volatile int i = 3; i >= 0; i--) { //apagar todos os leds
-  //  digitalWrite(LEDS_PINS[i][i], LOW);
-  //}
-
-  for (volatile int i = 0; i < NUMBER_OF_LEDS + 1; i++) {  // todos leds semaforo
-
-    for (volatile int j = 0; j < NUMBER_OF_LEDS; j++) {
-      digitalWrite(LEDS_PINS[i][0], HIGH);
-    }
+  if (*position == NUMBER_OF_SEMAPHORES) {
+    *position = 0;
   }
 }
 
-void pedestre() {
+
+void closeAllCarSemaphores() {
+  // Se um pedestre aperta o botão para atravessar a rua, então mudamos a variável de estado que controla
+  // o attachInterrupt para falso
+  isPedestrianPushingButton = !isPedestrianPushingButton;
+
   for (int i = 0; i < NUMBER_OF_SEMAPHORES; i++) {
-    //for (int j = 0; j < NUMBER_OF_LED-1; j++) {
-    digitalWrite(LEDS_PINS_P[i][1], HIGH);
-    //}
-  }
-  // if (local)
-  //pisca
-  for (int i = 0; i < 10; i++) {
-    //for (int j = 0; j < NUMBER_OF_LED-1; j++) {
-    digitalWrite(LEDS_PINS_P[i][1], HIGH);
-    delay(100);
-    digitalWrite(LEDS_PINS_P[i][1], LOW);
-    delay(100);
-    //}
+    // Este loop itera sobre todos os semáforos de pedestres e atualiza a variável de estado
+    // wasPushButtonPressed para verdadeiro para o semáforo que teve o botão apertado
+    pedestrianSemaphores[i].updatePushButtonState();
   }
 }
 
-//função do contador binario
-void binaryCounter() {
-  for (count = 0; count < 16; count++) {
-    for (i = 0; i < NUMBER_OF_LEDS; i++) {  //for que atualiza todos os leds neste loop
-      /* Aqui estamos fazendo i+1 left-shifts no número
-    	1, isto é, estamos elevando 2 na potência i+1. */
-      divisor = 1 << (i + 1);
-      resto = count % divisor;                  //calcula o resto do numero do loop que estamos pelo divisor atual(em qual led estamos)
-      ledState = resto / (1 << i);              //divide o resto pelo valor atribuido ao led. (0=LOW e 1=HIGH)
-      digitalWrite(LEDS_PINS[i][i], ledState);  //atualiza o led "i" com seu estado "ledState"
-    }
-    delay(500);
+
+void openAllPedestrianSemaphores() {
+  for (int i = 0; i < NUMBER_OF_SEMAPHORES; i++) {
+    // Este loop abre todos os semáforos de pedestres
+    pedestrianSemaphores[i].open();
   }
-  // powerOffLeds();
+
+  for (int i = 0; i < NUMBER_OF_SEMAPHORES; i++) {
+    // Este loop itera novamente sobre os semáforos de pedestre e checa
+    // qual foi o semáforo que teve o botão apertado. Se o semáforo teve o botão
+    // apertado, então esse semáforo vai ter o led verde pulsando 3 vezes.
+    if (pedestrianSemaphores[i].wasPushButtonPressed) {
+      pedestrianSemaphores[i].openPulsing();
+    }
+  }
+
+  for (int i = 0; i < NUMBER_OF_SEMAPHORES; i++) {
+    // Este loop fecha todos os semáforos de pedestres
+    pedestrianSemaphores[i].close();
+  }
+
+  // Após o fim do intervalo dos semáforos dos pedestres, mudamos a variável de estado que controla
+  // o attachInterrupt para falso novamente
+  isPedestrianPushingButton = !isPedestrianPushingButton;
+}
+
+int userInputToCarSemaphorePosition() {
+  char userInput;
+  int semaphorePosition = -1;
+
+  userInput = tolower(Serial.read());
+
+  if (userInput == 's') {
+    semaphorePosition = 0;
+  } else if (userInput == 'o') {
+    semaphorePosition = 1;
+  } else if (userInput == 'n') {
+    semaphorePosition = 2;
+  } else if (userInput == 'l') {
+    semaphorePosition = 3;
+  }
+
+  if (semaphorePosition != -1) {
+    Serial.print("Entered input is: ");
+    Serial.println(userInput);
+  }
+
+  return semaphorePosition;
 }
